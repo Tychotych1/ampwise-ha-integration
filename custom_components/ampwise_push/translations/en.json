@@ -1,0 +1,20 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect Ampwise",
+        "data": {
+          "api_key": "API key",
+          "ingest_url": "Ingest URL",
+          "push_interval": "Interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid API key, or the portal is unreachable at this address."
+    },
+    "abort": {
+      "already_configured": "This API key is already configured."
+    }
+  }
+}

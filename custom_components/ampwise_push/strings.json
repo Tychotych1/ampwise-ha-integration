@@ -1,0 +1,20 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ampwise koppelen",
+        "data": {
+          "api_key": "API-sleutel",
+          "ingest_url": "Ingest-URL",
+          "push_interval": "Interval (seconden)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Ongeldige API-sleutel, of de portal is niet bereikbaar op dit adres."
+    },
+    "abort": {
+      "already_configured": "Deze API-sleutel is al gekoppeld."
+    }
+  }
+}
