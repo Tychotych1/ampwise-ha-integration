@@ -1,0 +1,11 @@
+{
+  "domain": "ampwise_push",
+  "name": "Ampwise",
+  "version": "1.0.0",
+  "config_flow": true,
+  "iot_class": "cloud_push",
+  "integration_type": "service",
+  "requirements": [],
+  "codeowners": ["@tychotych1"],
+  "documentation": "https://ampwise.nl"
+}
