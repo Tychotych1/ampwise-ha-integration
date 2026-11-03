@@ -55,18 +55,32 @@ class CatalogTests(unittest.TestCase):
 class EnergyRelevanceTests(unittest.TestCase):
     def test_de_lijsten_zijn_die_van_de_privacypagina(self):
         self.assertEqual(payload.ENERGY_DEVICE_CLASSES, ("power", "energy", "battery", "voltage", "current", "monetary"))
-        self.assertEqual(payload.ENERGY_UNITS, ("W", "kWh", "%", "€/kWh", "EUR/kWh"))
+        self.assertEqual(payload.ENERGY_UNITS, ("W", "kW", "Wh", "kWh", "MWh", "%", "€/kWh", "EUR/kWh", "ct/kWh", "€/MWh", "EUR/MWh"))
+
+    def test_gas_hoort_er_niet_bij(self):
+        for gas_class in ("gas", "water", "volume"):
+            self.assertNotIn(gas_class, payload.ENERGY_DEVICE_CLASSES)
+        for volume_unit in ("m³", "m3", "ft³", "CCF", "L"):
+            self.assertNotIn(volume_unit, payload.ENERGY_UNITS)
+        for device_class, unit in (("gas", "m³"), ("gas", "m3"), ("gas", None), (None, "m³"), (None, "m3"), ("water", "m³"), ("volume", "m³")):
+            self.assertFalse(payload.is_energy_relevant(device_class, unit), f"{device_class}/{unit}")
+
+    def test_geen_eenheid_of_type_dubbel(self):
+        self.assertEqual(len(set(payload.ENERGY_UNITS)), len(payload.ENERGY_UNITS))
+        self.assertEqual(len(set(payload.ENERGY_DEVICE_CLASSES)), len(payload.ENERGY_DEVICE_CLASSES))
 
     def test_type_of_eenheid_is_genoeg(self):
         for device_class in ("power", "energy", "battery", "voltage", "current", "monetary"):
             self.assertTrue(payload.is_energy_relevant(device_class, None), device_class)
-        for unit in ("W", "kWh", "%", "€/kWh", "EUR/kWh"):
+        for unit in payload.ENERGY_UNITS:
+            self.assertTrue(payload.is_energy_relevant(None, unit), unit)
+        for unit in ("W", "kW", "Wh", "kWh", "MWh", "%", "€/kWh", "EUR/kWh", "ct/kWh", "€/MWh", "EUR/MWh"):
             self.assertTrue(payload.is_energy_relevant(None, unit), unit)
         self.assertTrue(payload.is_energy_relevant("power", "kW"))
         self.assertTrue(payload.is_energy_relevant(" power ", None))
 
     def test_al_het_andere_niet(self):
-        for device_class, unit in (("temperature", "°C"), ("humidity", None), (None, None), ("", ""), (None, "kW"), (None, "Wh"), (None, "A"), ("enum", None), (None, "lx")):
+        for device_class, unit in (("temperature", "°C"), ("humidity", None), (None, None), ("", ""), (None, "A"), (None, "V"), ("enum", None), (None, "lx")):
             self.assertFalse(payload.is_energy_relevant(device_class, unit), f"{device_class}/{unit}")
 
     def test_alleen_ascii_witruimte_valt_weg_zoals_in_de_portal(self):
@@ -74,11 +88,17 @@ class EnergyRelevanceTests(unittest.TestCase):
         self.assertTrue(payload.is_energy_relevant(None, " W "))
         self.assertFalse(payload.is_energy_relevant(None, "\u00a0W"))  # een vaste spatie is geen gewone spatie: niet raden
         self.assertFalse(payload.is_energy_relevant("\u00a0power", None))
+        self.assertTrue(payload.is_energy_relevant(None, " kW\t"))
+        self.assertTrue(payload.is_energy_relevant(None, "\tct/kWh\n"))
+        self.assertFalse(payload.is_energy_relevant(None, "\u00a0kW"))
+        self.assertFalse(payload.is_energy_relevant(" kW\t", None), "kW is een eenheid, geen type")
 
     def test_hoofdletters_tellen(self):
         self.assertFalse(payload.is_energy_relevant("Power", None))
         self.assertFalse(payload.is_energy_relevant(None, "w"))
         self.assertFalse(payload.is_energy_relevant(None, "KWH"))
+        for unit in ("KW", "mwh", "CT/kWh", "eur/mwh", "Ct/kWh"):
+            self.assertFalse(payload.is_energy_relevant(None, unit), unit)
 
     def test_een_waarde_die_geen_tekst_is_geeft_geen_fout(self):
         self.assertFalse(payload.is_energy_relevant(5, 7))

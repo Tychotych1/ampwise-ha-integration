@@ -16,8 +16,9 @@ from typing import Any, Iterable
 
 
 ENERGY_DEVICE_CLASSES = ("power", "energy", "battery", "voltage", "current", "monetary")
-# "EUR/kWh" naast "€/kWh": Home Assistant en de prijsintegraties schrijven de eenheid van een stroomprijs allebei zo.
-ENERGY_UNITS = ("W", "kWh", "%", "€/kWh", "EUR/kWh")
+# Vermogen (W, kW), energie (Wh, kWh, MWh), een percentage (batterijstand) en de prijs van stroom. "EUR/kWh" naast "€/kWh" (en "EUR/MWh" naast "€/MWh"): Home Assistant en de prijsintegraties
+# schrijven de eenheid van een stroomprijs allebei zo; "ct/kWh" is een prijs in centen. Gas (kubieke meters, ook het type gas) hoort er bewust niet bij.
+ENERGY_UNITS = ("W", "kW", "Wh", "kWh", "MWh", "%", "€/kWh", "EUR/kWh", "ct/kWh", "€/MWh", "EUR/MWh")
 
 
 # Alleen de witruimte van ASCII valt weg rond een waarde, zoals in de portal (src/lib/energyRelevance.ts); str.strip() zonder argument haalt ook een vaste spatie weg.
