@@ -31,7 +31,7 @@ from .const import (
     LOG_COOLDOWN_SECONDS,
     REQUEST_TIMEOUT,
 )
-from .payload import build_catalog, build_states, parse_mapped
+from .payload import build_catalog, states_to_send, update_mapped
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class _PushState:
     def __init__(self) -> None:
         self.failing = False
         self.last_logged = 0.0
-        # De entity-id's waarvan de portal de standen wil; None = nog niet bekend (of de portal kent de lijst niet: dan sturen we alles, zoals voorheen).
+        # De entity-id's waarvan de portal de standen wil; None = nog niet bekend (of de portal kent de lijst niet: dan alleen de energiesensoren, zie states_to_send).
         self.mapped: set[str] | None = None
         self.catalog_sent = False
         self.legacy_portal = False
@@ -80,14 +80,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 return None
 
     def _handle_response(response: Any) -> None:
-        mapped = parse_mapped(response)
-        if mapped is None:
-            # Een oudere portal zonder lijst van gekoppelde sensoren: alles blijven sturen.
-            state.legacy_portal = True
-            state.mapped = None
-        else:
-            state.legacy_portal = False
-            state.mapped = mapped
+        # Een antwoord dat niet te lezen is (een foutpagina van een tunnel) laat wat we wisten ongemoeid; zie update_mapped.
+        state.mapped, state.legacy_portal = update_mapped(state.mapped, state.legacy_portal, response)
 
     async def _send_catalog(_now: Any = None) -> None:
         # hass.states.async_all() is synchroon, geen await nodig/mogelijk.
@@ -108,7 +102,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if not state.catalog_sent:
                 return
 
-        entities = build_states(hass.states.async_all(), state.mapped, ENTITY_DOMAIN_PREFIX)
+        entities = states_to_send(hass.states.async_all(), state.mapped, state.legacy_portal, ENTITY_DOMAIN_PREFIX)
         try:
             # Ook zonder standen (niets gekoppeld) een bericht: de portal ziet zo dat de integratie leeft en welke versie hij heeft, en het antwoord ververst de lijst van gekoppelde sensoren.
             _handle_response(await _post({"entities": entities}))
