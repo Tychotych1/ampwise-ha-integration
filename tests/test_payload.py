@@ -69,6 +69,12 @@ class EnergyRelevanceTests(unittest.TestCase):
         for device_class, unit in (("temperature", "°C"), ("humidity", None), (None, None), ("", ""), (None, "kW"), (None, "Wh"), (None, "A"), ("enum", None), (None, "lx")):
             self.assertFalse(payload.is_energy_relevant(device_class, unit), f"{device_class}/{unit}")
 
+    def test_alleen_ascii_witruimte_valt_weg_zoals_in_de_portal(self):
+        self.assertTrue(payload.is_energy_relevant("\tenergy\n", None))
+        self.assertTrue(payload.is_energy_relevant(None, " W "))
+        self.assertFalse(payload.is_energy_relevant(None, "\u00a0W"))  # een vaste spatie is geen gewone spatie: niet raden
+        self.assertFalse(payload.is_energy_relevant("\u00a0power", None))
+
     def test_hoofdletters_tellen(self):
         self.assertFalse(payload.is_energy_relevant("Power", None))
         self.assertFalse(payload.is_energy_relevant(None, "w"))
@@ -122,6 +128,45 @@ class ParseMappedTests(unittest.TestCase):
 
     def test_rommel_in_de_lijst_wordt_genegeerd(self):
         self.assertEqual(payload.parse_mapped({"mapped": ["sensor.a", 5, None]}), {"sensor.a"})
+
+
+class UpdateMappedTests(unittest.TestCase):
+    def test_een_lijst_in_het_antwoord_wordt_de_nieuwe_lijst(self):
+        self.assertEqual(payload.update_mapped(None, False, {"mapped": ["sensor.a"]}), ({"sensor.a"}, False))
+        self.assertEqual(payload.update_mapped({"sensor.oud"}, False, {"mapped": []}), (set(), False))
+        self.assertEqual(payload.update_mapped(None, True, {"mapped": ["sensor.a"]}), ({"sensor.a"}, False), "een portal die nu wel een lijst geeft is niet meer 'oud'")
+
+    def test_json_zonder_lijst_is_een_oudere_portal(self):
+        self.assertEqual(payload.update_mapped(None, False, {"ok": True, "received": 3}), (None, True))
+        self.assertEqual(payload.update_mapped({"sensor.a"}, False, {"ok": True}), (None, True))
+
+    def test_een_onleesbaar_antwoord_laat_wat_we_wisten_staan(self):
+        for rommel in (None, "<html>Fout</html>", 502, [], ["mapped"]):
+            self.assertEqual(payload.update_mapped({"sensor.a"}, False, rommel), ({"sensor.a"}, False), repr(rommel))
+            self.assertEqual(payload.update_mapped(None, False, rommel), (None, False), repr(rommel))
+            self.assertEqual(payload.update_mapped(None, True, rommel), (None, True), repr(rommel))
+
+
+class StatesToSendTests(unittest.TestCase):
+    def test_met_een_bekende_lijst_alleen_de_gekoppelde(self):
+        sent = payload.states_to_send(STATES, {"sensor.zon"}, False, PREFIX)
+        self.assertEqual([s["entityId"] for s in sent], ["sensor.zon"])
+
+    def test_een_oudere_portal_krijgt_alleen_de_energiesensoren(self):
+        sent = payload.states_to_send(STATES, None, True, PREFIX)
+        self.assertEqual([s["entityId"] for s in sent], ["sensor.zon", "sensor.telefoon_batterij"])
+        self.assertNotIn("Woonkamer", json.dumps(sent))
+
+    def test_zolang_de_portal_niet_heeft_gezegd_wat_hij_wil_gaat_er_niets_mee(self):
+        self.assertEqual(payload.states_to_send(STATES, None, False, PREFIX), [])
+
+    def test_een_foutpagina_na_een_bekende_lijst_verandert_niets_aan_wat_er_gaat(self):
+        mapped, legacy = payload.update_mapped({"sensor.zon"}, False, "<html>Bad gateway</html>")
+        self.assertEqual([s["entityId"] for s in payload.states_to_send(STATES, mapped, legacy, PREFIX)], ["sensor.zon"])
+
+    def test_een_foutpagina_voor_het_eerste_antwoord_stuurt_niets(self):
+        mapped, legacy = payload.update_mapped(None, False, "<html>Captive portal</html>")
+        self.assertEqual(payload.states_to_send(STATES, mapped, legacy, PREFIX), [])
 
 
 class VersionTests(unittest.TestCase):
