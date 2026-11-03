@@ -29,6 +29,8 @@ from .const import (
     ENTITY_DOMAIN_PREFIX,
     INTEGRATION_VERSION,
     LOG_COOLDOWN_SECONDS,
+    MAX_PUSH_INTERVAL,
+    MIN_PUSH_INTERVAL,
     REQUEST_TIMEOUT,
 )
 from .payload import build_catalog, states_to_send, update_mapped
@@ -51,7 +53,8 @@ class _PushState:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     api_key = entry.data[CONF_API_KEY]
     ingest_url = entry.data[CONF_INGEST_URL]
-    interval = entry.data[CONF_PUSH_INTERVAL]
+    # Ook een entry die met een ouder formulier is aangemaakt (zonder grenzen) stuurt nooit vaker dan elke MIN_PUSH_INTERVAL seconden.
+    interval = min(max(entry.data[CONF_PUSH_INTERVAL], MIN_PUSH_INTERVAL), MAX_PUSH_INTERVAL)
     session = async_get_clientsession(hass)
     state = _PushState()
 
