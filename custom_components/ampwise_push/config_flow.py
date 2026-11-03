@@ -18,6 +18,7 @@ from .const import (
     DEFAULT_INGEST_URL,
     DEFAULT_PUSH_INTERVAL,
     DOMAIN,
+    INTEGRATION_VERSION,
     REQUEST_TIMEOUT,
 )
 
@@ -30,7 +31,7 @@ async def _validate_api_key(hass: HomeAssistant, ingest_url: str, api_key: str) 
     try:
         async with session.post(
             ingest_url,
-            json={"entities": []},
+            json={"version": INTEGRATION_VERSION, "entities": []},
             headers={"Authorization": f"Bearer {api_key}"},
             timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT),
         ) as resp:
