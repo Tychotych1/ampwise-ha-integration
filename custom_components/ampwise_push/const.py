@@ -11,6 +11,9 @@ CONF_PUSH_INTERVAL = "push_interval"
 # wijzen zonder de integratie-broncode aan te passen.
 DEFAULT_INGEST_URL = "https://ampwise.nl/api/ingest"
 DEFAULT_PUSH_INTERVAL = 30  # seconden
+# Grenzen voor het interval: een interval van 0 of lager laat de integratie zonder pauze sturen (honderden berichten per seconde), een heel groot interval maakt de gegevens in de portal oud.
+MIN_PUSH_INTERVAL = 5  # seconden
+MAX_PUSH_INTERVAL = 3600  # seconden
 
 ENTITY_DOMAIN_PREFIX = "sensor."
 REQUEST_TIMEOUT = 10  # seconden - zelfde orde van grootte als de portal se eigen HTTP-timeouts

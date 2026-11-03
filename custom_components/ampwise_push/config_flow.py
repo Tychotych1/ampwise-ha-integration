@@ -19,6 +19,8 @@ from .const import (
     DEFAULT_PUSH_INTERVAL,
     DOMAIN,
     INTEGRATION_VERSION,
+    MAX_PUSH_INTERVAL,
+    MIN_PUSH_INTERVAL,
     REQUEST_TIMEOUT,
 )
 
@@ -62,7 +64,9 @@ class AmpwiseConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             {
                 vol.Required(CONF_API_KEY): str,
                 vol.Required(CONF_INGEST_URL, default=DEFAULT_INGEST_URL): str,
-                vol.Required(CONF_PUSH_INTERVAL, default=DEFAULT_PUSH_INTERVAL): int,
+                vol.Required(CONF_PUSH_INTERVAL, default=DEFAULT_PUSH_INTERVAL): vol.All(
+                    vol.Coerce(int), vol.Range(min=MIN_PUSH_INTERVAL, max=MAX_PUSH_INTERVAL)
+                ),
             }
         )
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
