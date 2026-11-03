@@ -26,13 +26,15 @@ STATES = [
     state("device_tracker.auto", "home"),
     state("binary_sensor.kabel", "on"),
     state("sensor.stuk", "unavailable"),
+    state("sensor.woonkamer_temperatuur", "21.5", unit_of_measurement="°C", device_class="temperature", friendly_name="Woonkamer"),
+    state("sensor.aanwezigheid_tycho", "home", friendly_name="Aanwezigheid Tycho"),
 ]
 
 
 class CatalogTests(unittest.TestCase):
-    def test_alleen_sensoren_en_nooit_een_stand(self):
+    def test_alleen_energiesensoren_en_nooit_een_stand(self):
         catalog = payload.build_catalog(STATES, PREFIX)
-        self.assertEqual([c["entityId"] for c in catalog], ["sensor.zon", "sensor.telefoon_batterij", "sensor.stuk"])
+        self.assertEqual([c["entityId"] for c in catalog], ["sensor.zon", "sensor.telefoon_batterij"])
         for entry in catalog:
             self.assertNotIn("state", entry)
             self.assertNotIn("lastUpdated", entry)
@@ -43,8 +45,38 @@ class CatalogTests(unittest.TestCase):
     def test_naam_type_en_eenheid(self):
         zon = payload.build_catalog(STATES, PREFIX)[0]
         self.assertEqual(zon, {"entityId": "sensor.zon", "unitOfMeasurement": "W", "deviceClass": "power", "friendlyName": "Zon"})
-        stuk = payload.build_catalog(STATES, PREFIX)[2]
-        self.assertIsNone(stuk["unitOfMeasurement"])
+
+    def test_wat_niet_over_energie_gaat_verlaat_home_assistant_niet(self):
+        dump = json.dumps(payload.build_catalog(STATES, PREFIX))
+        for niet in ("temperatuur", "Woonkamer", "aanwezigheid", "Aanwezigheid", "sensor.stuk"):
+            self.assertNotIn(niet, dump)
+
+
+class EnergyRelevanceTests(unittest.TestCase):
+    def test_de_lijsten_zijn_die_van_de_privacypagina(self):
+        self.assertEqual(payload.ENERGY_DEVICE_CLASSES, ("power", "energy", "battery", "voltage", "current", "monetary"))
+        self.assertEqual(payload.ENERGY_UNITS, ("W", "kWh", "%", "€/kWh", "EUR/kWh"))
+
+    def test_type_of_eenheid_is_genoeg(self):
+        for device_class in ("power", "energy", "battery", "voltage", "current", "monetary"):
+            self.assertTrue(payload.is_energy_relevant(device_class, None), device_class)
+        for unit in ("W", "kWh", "%", "€/kWh", "EUR/kWh"):
+            self.assertTrue(payload.is_energy_relevant(None, unit), unit)
+        self.assertTrue(payload.is_energy_relevant("power", "kW"))
+        self.assertTrue(payload.is_energy_relevant(" power ", None))
+
+    def test_al_het_andere_niet(self):
+        for device_class, unit in (("temperature", "°C"), ("humidity", None), (None, None), ("", ""), (None, "kW"), (None, "Wh"), (None, "A"), ("enum", None), (None, "lx")):
+            self.assertFalse(payload.is_energy_relevant(device_class, unit), f"{device_class}/{unit}")
+
+    def test_hoofdletters_tellen(self):
+        self.assertFalse(payload.is_energy_relevant("Power", None))
+        self.assertFalse(payload.is_energy_relevant(None, "w"))
+        self.assertFalse(payload.is_energy_relevant(None, "KWH"))
+
+    def test_een_waarde_die_geen_tekst_is_geeft_geen_fout(self):
+        self.assertFalse(payload.is_energy_relevant(5, 7))
+        self.assertTrue(payload.is_energy_relevant(None, "W"))
 
 
 class StatesTests(unittest.TestCase):
@@ -62,8 +94,16 @@ class StatesTests(unittest.TestCase):
     def test_niets_gekoppeld_geeft_een_lege_lijst(self):
         self.assertEqual(payload.build_states(STATES, set(), PREFIX), [])
 
-    def test_een_portal_zonder_lijst_krijgt_alles_zoals_voorheen(self):
-        self.assertEqual(len(payload.build_states(STATES, None, PREFIX)), 3)
+    def test_een_portal_zonder_lijst_krijgt_alleen_de_energiesensoren(self):
+        sent = payload.build_states(STATES, None, PREFIX)
+        self.assertEqual([s["entityId"] for s in sent], ["sensor.zon", "sensor.telefoon_batterij"])
+        dump = json.dumps(sent)
+        for niet in ("temperatuur", "Woonkamer", "aanwezigheid", "sensor.stuk"):
+            self.assertNotIn(niet, dump)
+
+    def test_wat_de_klant_koppelt_komt_altijd_door_ook_zonder_type_of_eenheid(self):
+        sent = payload.build_states(STATES, {"sensor.aanwezigheid_tycho"}, PREFIX)
+        self.assertEqual([s["entityId"] for s in sent], ["sensor.aanwezigheid_tycho"])
 
     def test_een_onbekende_gekoppelde_sensor_wordt_overgeslagen(self):
         self.assertEqual(payload.build_states(STATES, {"sensor.bestaat_niet"}, PREFIX), [])
