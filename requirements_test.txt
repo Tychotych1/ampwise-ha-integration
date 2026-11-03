@@ -1,0 +1,9 @@
+# Alleen voor het draaien van de tests (de integratie zelf heeft geen requirements: manifest.json heeft "requirements": []).
+# Opzet: Python 3.12 + een virtualenv:  python -m venv .venv   daarna   .venv/Scripts/python -m pip install -r requirements_test.txt   (Linux/macOS: .venv/bin/python)   en   python -m pytest tests
+#
+# pytest-homeassistant-custom-component 0.13.205 bootst Home Assistant 2025.1.4 na en draait op Python 3.12; dat is de nieuwste versie die op Python 3.12 past. Home Assistant 2026.10.x (de versie
+# die in productie draait) hoort bij 0.13.375, die Python 3.14 vraagt: op een machine met Python 3.14 kan die regel hier staan in plaats van de volgende.
+pytest-homeassistant-custom-component==0.13.205
+# De testbibliotheek controleert na elke test dat er geen thread achterblijft. pycares vanaf 4.10 start bij het sluiten van een DNS-kanaal een eigen thread (_run_safe_shutdown_loop), waardoor elke test
+# faalt; 4.5.0 is de versie uit de tijd van Home Assistant 2025.1.
+pycares==4.5.0
