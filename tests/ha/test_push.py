@@ -364,3 +364,32 @@ async def test_een_opgeslagen_interval_buiten_de_grenzen_wordt_bijgesteld_zodat_
     await advance(hass, freezer, 1)
     assert len(posts(aioclient_mock)) == count + 1, "precies een bericht per interval"
     assert portal.mode == "ok"
+
+
+# --- een entry van de vorige versie ---------------------------------------------------------------------------------------------------------------------------------------------
+
+
+async def test_een_entry_die_met_versie_1_0_0_is_aangemaakt_laadt_in_deze_versie_zonder_migratie(hass, aioclient_mock, freezer):
+    """In Home Assistant staat nu 1.0.0 (commit e09670c): dezelfde drie gegevens (api_key, ingest_url, push_interval, const.py regel 5-7), dezelfde unique_id (de eerste 16 tekens van de
+    sleutel, config_flow.py regel 56) en dezelfde VERSION = 1 van de flow. Daarom hoeft er bij het bijwerken niets te migreren."""
+    from homeassistant.config_entries import ConfigEntry
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    from custom_components.ampwise_push.config_flow import AmpwiseConfigFlow
+
+    assert AmpwiseConfigFlow.VERSION == 1
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Ampwise",
+        version=1,
+        data={"api_key": PUSH_KEY, "ingest_url": PORTAL_URL, "push_interval": 30},
+        unique_id=PUSH_KEY[:16],
+    )
+    entry.add_to_hass(hass)
+    energy_sensors(hass)
+    FakePortal(aioclient_mock, ["sensor.zon"])
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert isinstance(entry, ConfigEntry) and entry.state is ConfigEntryState.LOADED
+    await advance(hass, freezer, INTERVAL)
+    assert [e["entityId"] for e in posts(aioclient_mock)[-1]["body"]["entities"]] == ["sensor.zon"]
