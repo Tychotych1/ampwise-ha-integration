@@ -109,12 +109,13 @@ async def test_een_volledige_ronde_tegen_de_echte_portal(hass, caplog, capsys):
         await hass.async_block_till_done(wait_background_tasks=True)
         assert entry.state is ConfigEntryState.LOADED
 
-        # 2. De ontdekkingslijst staat in de keuzelijst van de portal: energie wel (ook kW en ct/kWh), de rest niet.
+        # 2. De ontdekkingslijst staat in de keuzelijst van de portal: energie wel (ook kW, ct/kWh en gas), de rest niet.
         available = await eventually(lambda: portal.available(), "de keuzelijst bevat de sensoren")
-        assert set(available) == {"sensor.zon", "sensor.net_kw", "sensor.zon_vandaag", "sensor.batterij_soc", "sensor.prijs_ct"}, sorted(available)
+        assert set(available) == {"sensor.zon", "sensor.net_kw", "sensor.zon_vandaag", "sensor.batterij_soc", "sensor.prijs_ct", "sensor.gas_vandaag"}, sorted(available)
         assert available["sensor.net_kw"]["unitOfMeasurement"] == "kW"
         assert available["sensor.prijs_ct"]["unitOfMeasurement"] == "ct/kWh"
-        for niet in ("sensor.woonkamer_temperatuur", "sensor.aanwezigheid_tycho", "sensor.gas_vandaag"):
+        assert available["sensor.gas_vandaag"]["unitOfMeasurement"] == "m³" and available["sensor.gas_vandaag"]["deviceClass"] == "gas"
+        for niet in ("sensor.woonkamer_temperatuur", "sensor.aanwezigheid_tycho"):
             assert niet not in available
 
         # 3. Koppelen via de portal-API. De volgende push heeft het antwoord met de gekoppelde lijst nog niet gehad; de tweede stuurt de standen.

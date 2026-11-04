@@ -54,16 +54,60 @@ class CatalogTests(unittest.TestCase):
 
 class EnergyRelevanceTests(unittest.TestCase):
     def test_de_lijsten_zijn_die_van_de_privacypagina(self):
-        self.assertEqual(payload.ENERGY_DEVICE_CLASSES, ("power", "energy", "battery", "voltage", "current", "monetary"))
-        self.assertEqual(payload.ENERGY_UNITS, ("W", "kW", "Wh", "kWh", "MWh", "%", "€/kWh", "EUR/kWh", "ct/kWh", "€/MWh", "EUR/MWh"))
+        self.assertEqual(payload.ENERGY_DEVICE_CLASSES, ("power", "energy", "battery", "voltage", "current", "monetary", "gas"))
+        self.assertEqual(payload.ENERGY_UNITS, ("W", "kW", "Wh", "kWh", "MWh", "%", "€/kWh", "EUR/kWh", "ct/kWh", "€/MWh", "EUR/MWh", "m³", "m3"))
 
-    def test_gas_hoort_er_niet_bij(self):
-        for gas_class in ("gas", "water", "volume"):
-            self.assertNotIn(gas_class, payload.ENERGY_DEVICE_CLASSES)
-        for volume_unit in ("m³", "m3", "ft³", "CCF", "L"):
+    def test_gas_hoort_erbij(self):
+        self.assertIn("gas", payload.ENERGY_DEVICE_CLASSES)
+        for volume_unit in ("m³", "m3"):
+            self.assertIn(volume_unit, payload.ENERGY_UNITS)
+        for other in ("water", "volume", "volume_storage"):
+            self.assertNotIn(other, payload.ENERGY_DEVICE_CLASSES)
+        for volume_unit in ("ft³", "CCF", "L", "€/m³"):
             self.assertNotIn(volume_unit, payload.ENERGY_UNITS)
-        for device_class, unit in (("gas", "m³"), ("gas", "m3"), ("gas", None), (None, "m³"), (None, "m3"), ("water", "m³"), ("volume", "m³")):
-            self.assertFalse(payload.is_energy_relevant(device_class, unit), f"{device_class}/{unit}")
+
+    def test_dezelfde_gevallen_als_in_de_portal(self):
+        """Dezelfde tabel als CASES in tests/energyRelevance.spec.ts van de portal (de gas-gevallen): het type gas telt in elke eenheid, de eenheid m³ of m3 telt ook zonder type."""
+        nbsp = "\u00a0"
+        cases = [
+            ("gas", None, True),
+            ("gas", "m³", True),
+            ("gas", "m3", True),
+            ("gas", "kWh", True),  # gas in kWh met type
+            (None, "kWh", True),  # gas in kWh zonder type: de eenheid kWh was er al
+            ("gas", "ft³", True),
+            ("gas", "CCF", True),
+            ("gas", "L", True),
+            ("gas", "MJ", True),
+            (" gas ", None, True),
+            ("\tgas\n", "m³", True),
+            (None, "m³", True),
+            (None, "m3", True),
+            (None, " m³\t", True),
+            (None, "\tm3\n", True),
+            ("temperature", "m³", True),
+            ("Gas", None, False),
+            ("GAS", None, False),
+            (None, "M3", False),
+            (None, "m^3", False),
+            (None, "m²", False),
+            (None, "ft³", False),
+            (None, "CCF", False),
+            (None, "L", False),
+            (None, "€/m³", False),
+            (None, "m³/h", False),
+            (None, nbsp + "m³", False),
+            (nbsp + "gas", None, False),
+            # bewuste afweging: water in m³ komt door de eenheid m³ ook binnen, water in liters niet
+            ("water", "m³", True),
+            ("water", "m3", True),
+            ("water", "L", False),
+            ("water", None, False),
+            ("volume", "L", False),
+            ("volume_storage", "ft³", False),
+        ]
+        for device_class, unit, expected in cases:
+            self.assertEqual(payload.is_energy_relevant(device_class, unit), expected, f"{device_class!r}/{unit!r}")
 
     def test_geen_eenheid_of_type_dubbel(self):
         self.assertEqual(len(set(payload.ENERGY_UNITS)), len(payload.ENERGY_UNITS))
