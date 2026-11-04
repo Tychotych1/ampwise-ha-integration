@@ -1,0 +1,4 @@
+# Voor de CI (.github/workflows/test.yml): Linux, Python 3.14. Alleen de testbibliotheek hoeft hier te staan; die haalt Home Assistant en de rest van de afhankelijkheden zelf binnen.
+# pytest-homeassistant-custom-component 0.13.375 bootst Home Assistant 2026.10.4 na (de versie in productie) en vraagt Python 3.14.
+# Let op: de pin op pycares uit requirements_test.txt hoort bij Home Assistant 2025.1 (Python 3.12) en staat hier bewust NIET.
+pytest-homeassistant-custom-component==0.13.375

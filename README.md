@@ -24,3 +24,4 @@ Versies zonder versienummer (1.0.0 en eerder) worden door de portal nog 30 dagen
 - De tests die de integratie laden zoals Home Assistant dat doet (config flow, setup, pushes, storingen; tests/ha/) gebruiken pytest-homeassistant-custom-component:
   `python -m venv .venv`, daarna `.venv/Scripts/python -m pip install -r requirements_test.txt` (Linux/macOS: `.venv/bin/python`) en `.venv/Scripts/python -m pytest tests`.
   Welke versie van Home Assistant de tests nabootsen staat in requirements_test.txt.
+- In GitHub draaien dezelfde tests bij elke pull request en elke push naar main (`.github/workflows/test.yml`), op Linux met Python 3.14 en pytest-homeassistant-custom-component 0.13.375 (Home Assistant 2026.10.4, de versie in productie; `requirements_test_ci.txt`). Lokaal op Python 3.12 bootsen de tests Home Assistant 2025.1.4 na (`requirements_test.txt`): een groene lokale run bewijst dus minder dan de CI.
