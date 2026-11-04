@@ -85,7 +85,7 @@ async def test_een_volledige_ronde_over_echte_http(hass, portal):
     assert portal.auth == [f"Bearer {PUSH_KEY}"] * 2
     first, second = portal.received
     assert first["version"] == INTEGRATION_VERSION and first["entities"] == []
-    assert sorted(c["entityId"] for c in first["catalog"]) == ["sensor.net_kw", "sensor.zon", "sensor.zon_vandaag"]
+    assert sorted(c["entityId"] for c in first["catalog"]) == ["sensor.gas_vandaag", "sensor.net_kw", "sensor.zon", "sensor.zon_vandaag"], "energie en gas, niet de temperatuur en de aanwezigheid"
     assert "catalog" not in second
     assert [e["entityId"] for e in second["entities"]] == ["sensor.zon"]
     assert second["entities"][0]["state"] == "1500"
@@ -178,4 +178,4 @@ async def test_een_oude_portal_zonder_lijst_over_echte_http_krijgt_alleen_energi
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     await tick(hass)
-    assert sorted(e["entityId"] for e in portal.received[-1]["entities"]) == ["sensor.net_kw", "sensor.zon", "sensor.zon_vandaag"]
+    assert sorted(e["entityId"] for e in portal.received[-1]["entities"]) == ["sensor.gas_vandaag", "sensor.net_kw", "sensor.zon", "sensor.zon_vandaag"], "de energiesensoren, gas ook"

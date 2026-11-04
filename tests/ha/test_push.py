@@ -45,15 +45,18 @@ async def test_setup_laadt_de_entry_en_stuurt_meteen_de_lijst_met_energiesensore
     assert body["version"] == INTEGRATION_VERSION
     assert body["entities"] == [], "de ontdekkingslijst gaat zonder standen"
     ids = sorted(c["entityId"] for c in body["catalog"])
-    assert ids == ["sensor.net_kw", "sensor.zon", "sensor.zon_vandaag"], "kW, W en kWh zijn energie; temperatuur, aanwezigheid en gas niet"
+    assert ids == ["sensor.gas_vandaag", "sensor.net_kw", "sensor.zon", "sensor.zon_vandaag"], "kW, W, kWh en gas zijn energie; temperatuur en aanwezigheid niet"
     zon = next(c for c in body["catalog"] if c["entityId"] == "sensor.zon")
     assert zon == {"entityId": "sensor.zon", "unitOfMeasurement": "W", "deviceClass": "power", "friendlyName": "Zon"}
+    gas = next(c for c in body["catalog"] if c["entityId"] == "sensor.gas_vandaag")
+    assert gas == {"entityId": "sensor.gas_vandaag", "unitOfMeasurement": "m³", "deviceClass": "gas", "friendlyName": "Gas vandaag"}, "een gassensor staat in de ontdekkingslijst, zonder stand"
     dump = json.dumps(body)
-    for niet in ("state", "1500", "-0.4", "7.2", "21.5", "Woonkamer", "Aanwezigheid", "aanwezigheid", "gas", "m³", "home"):
+    for niet in ("state", "1500", "-0.4", "7.2", "3.1", "21.5", "Woonkamer", "Aanwezigheid", "aanwezigheid", "home"):
         assert niet not in dump, f"{niet!r} mag de catalogus niet in"
 
 
-async def test_de_nieuwe_eenheden_komen_in_de_lijst_en_gas_niet(hass, aioclient_mock):
+async def test_de_nieuwe_eenheden_komen_in_de_lijst_en_gas_ook(hass, aioclient_mock):
+    """Gas: het type gas telt in elke eenheid (ook kWh), de eenheid m³ of m3 telt ook zonder type. Bewuste afweging: water in m³ komt door de eenheid ook binnen; water in liters niet."""
     for entity_id, unit, device_class in (
         ("sensor.a_w", "W", None),
         ("sensor.b_kw", "kW", None),
@@ -68,7 +71,15 @@ async def test_de_nieuwe_eenheden_komen_in_de_lijst_en_gas_niet(hass, aioclient_
         ("sensor.k_mwh", "EUR/MWh", None),
         ("sensor.gas_m3", "m³", "gas"),
         ("sensor.gas_m3_zonder_type", "m3", None),
+        ("sensor.gas_m3_ascii_met_type", "m3", "gas"),
+        ("sensor.gas_kwh", "kWh", "gas"),
+        ("sensor.gas_kwh_zonder_type", "kWh", None),
+        ("sensor.gas_ft3", "ft³", "gas"),
+        ("sensor.gas_zonder_eenheid", None, "gas"),
+        ("sensor.water_m3", "m³", "water"),
         ("sensor.water", "L", "water"),
+        ("sensor.gas_prijs", "€/m³", None),
+        ("sensor.gas_ft3_zonder_type", "ft³", None),
     ):
         attrs = {"unit_of_measurement": unit}
         if device_class:
@@ -76,7 +87,12 @@ async def test_de_nieuwe_eenheden_komen_in_de_lijst_en_gas_niet(hass, aioclient_
         set_sensor(hass, entity_id, "1", **attrs)
     await setup_entry(hass, aioclient_mock)
     ids = sorted(c["entityId"] for c in posts(aioclient_mock)[0]["body"]["catalog"])
-    assert ids == ["sensor.a_w", "sensor.b_kw", "sensor.c_wh", "sensor.d_kwh", "sensor.e_mwh", "sensor.f_pct", "sensor.g_eur", "sensor.h_eur", "sensor.i_ct", "sensor.j_mwh", "sensor.k_mwh"]
+    assert ids == sorted(
+        [
+            "sensor.a_w", "sensor.b_kw", "sensor.c_wh", "sensor.d_kwh", "sensor.e_mwh", "sensor.f_pct", "sensor.g_eur", "sensor.h_eur", "sensor.i_ct", "sensor.j_mwh", "sensor.k_mwh",
+            "sensor.gas_m3", "sensor.gas_m3_zonder_type", "sensor.gas_m3_ascii_met_type", "sensor.gas_kwh", "sensor.gas_kwh_zonder_type", "sensor.gas_ft3", "sensor.gas_zonder_eenheid", "sensor.water_m3",
+        ]
+    ), "niet: water in liters, de gasprijs in euro per m³ en een volume in ft³ zonder type gas"
 
 
 async def test_alleen_sensor_entiteiten_geen_andere_domeinen(hass, aioclient_mock):
@@ -101,7 +117,7 @@ async def test_na_het_antwoord_gaan_alleen_de_gekoppelde_sensoren_mee_met_last_u
     assert "catalog" not in body, "de lijst gaat niet bij elke push mee"
     assert body["version"] == INTEGRATION_VERSION
     by_id = {e["entityId"]: e for e in body["entities"]}
-    assert sorted(by_id) == ["sensor.net_kw", "sensor.zon"], "alleen de gekoppelde sensoren, niet de temperatuur, aanwezigheid, gas of de niet-gekoppelde energiesensor"
+    assert sorted(by_id) == ["sensor.net_kw", "sensor.zon"], "alleen de gekoppelde sensoren, niet de temperatuur, aanwezigheid, de niet-gekoppelde gassensor of de niet-gekoppelde energiesensor"
     zon = by_id["sensor.zon"]
     assert zon["state"] == "1500"
     assert zon["unitOfMeasurement"] == "W"
@@ -112,6 +128,23 @@ async def test_na_het_antwoord_gaan_alleen_de_gekoppelde_sensoren_mee_met_last_u
     dump = json.dumps(body)
     for niet in ("Woonkamer", "21.5", "Aanwezigheid", "Gas vandaag", "3.1", "7.2"):
         assert niet not in dump
+
+
+async def test_een_gekoppelde_gassensor_gaat_met_zijn_stand_mee(hass, aioclient_mock, freezer):
+    """Een gassensor (type gas, m³) staat in de ontdekkingslijst (zie de eerste test) en, zodra de klant hem koppelt, met zijn stand in de pushes erna; ook gas in kWh en een gassensor in m3 zonder type."""
+    energy_sensors(hass)
+    set_sensor(hass, "sensor.gas_kwh", "31.5", unit_of_measurement="kWh", device_class="gas", friendly_name="Gas in kWh")
+    set_sensor(hass, "sensor.gas_m3_zonder_type", "2.4", unit_of_measurement="m3", friendly_name="Gas zonder type")
+    await setup_entry(hass, aioclient_mock, mapped=["sensor.gas_vandaag", "sensor.gas_kwh", "sensor.gas_m3_zonder_type"])
+    await advance(hass, freezer, INTERVAL + 1)
+    body = posts(aioclient_mock)[-1]["body"]
+    by_id = {e["entityId"]: e for e in body["entities"]}
+    assert sorted(by_id) == ["sensor.gas_kwh", "sensor.gas_m3_zonder_type", "sensor.gas_vandaag"]
+    gas = by_id["sensor.gas_vandaag"]
+    assert (gas["state"], gas["unitOfMeasurement"], gas["deviceClass"], gas["friendlyName"]) == ("3.1", "m³", "gas", "Gas vandaag")
+    assert gas["lastUpdated"] == hass.states.get("sensor.gas_vandaag").last_updated.isoformat()
+    assert (by_id["sensor.gas_kwh"]["state"], by_id["sensor.gas_kwh"]["unitOfMeasurement"]) == ("31.5", "kWh")
+    assert (by_id["sensor.gas_m3_zonder_type"]["state"], by_id["sensor.gas_m3_zonder_type"]["unitOfMeasurement"]) == ("2.4", "m3")
 
 
 async def test_een_tweede_push_stuurt_de_lijst_niet_opnieuw_maar_de_lijst_komt_na_een_dag_wel_weer(hass, aioclient_mock, freezer):
@@ -186,9 +219,9 @@ async def test_een_oudere_portal_zonder_lijst_krijgt_alleen_de_energiesensoren(h
     await setup_entry(hass, aioclient_mock, mode="legacy")
     await advance(hass, freezer, INTERVAL)
     body = posts(aioclient_mock)[-1]["body"]
-    assert sorted(e["entityId"] for e in body["entities"]) == ["sensor.net_kw", "sensor.zon", "sensor.zon_vandaag"], "niet de temperatuur, de aanwezigheid of het gas"
+    assert sorted(e["entityId"] for e in body["entities"]) == ["sensor.gas_vandaag", "sensor.net_kw", "sensor.zon", "sensor.zon_vandaag"], "de energiesensoren, gas ook; niet de temperatuur of de aanwezigheid"
     dump = json.dumps(body)
-    for niet in ("Woonkamer", "Aanwezigheid", "Gas vandaag", "21.5"):
+    for niet in ("Woonkamer", "Aanwezigheid", "21.5"):
         assert niet not in dump
 
 
