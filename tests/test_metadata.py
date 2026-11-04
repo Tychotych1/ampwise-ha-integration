@@ -101,3 +101,33 @@ class SeparationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CiTests(unittest.TestCase):
+    """De CI (.github/workflows/test.yml) draait op de versie van Home Assistant die in productie staat; deze tests houden de bestanden eromheen bij elkaar."""
+
+    def setUp(self):
+        self.workflow = (REPO / ".github" / "workflows" / "test.yml").read_text(encoding="utf-8")
+        self.requirements_ci = (REPO / "requirements_test_ci.txt").read_text(encoding="utf-8")
+        self.requirements_local = (REPO / "requirements_test.txt").read_text(encoding="utf-8")
+
+    def test_ci_gebruikt_de_testbibliotheek_van_home_assistant_2026_10_4_op_python_3_14(self):
+        self.assertIn("pytest-homeassistant-custom-component==0.13.375", self.requirements_ci)
+        self.assertIn('python-version: "3.14"', self.workflow)
+        self.assertIn("requirements_test_ci.txt", self.workflow)
+        self.assertIn("pip install -r requirements_test_ci.txt", self.workflow)
+
+    def test_de_pin_op_pycares_van_home_assistant_2025_hoort_niet_in_de_ci(self):
+        self.assertNotIn("pycares", [l.split("==")[0].strip() for l in self.requirements_ci.splitlines() if l.strip() and not l.lstrip().startswith("#")])
+        self.assertIn("pycares==4.5.0", self.requirements_local)
+
+    def test_de_lokale_opzet_blijft_op_python_3_12(self):
+        self.assertIn("pytest-homeassistant-custom-component==0.13.205", self.requirements_local)
+
+    def test_de_workflow_draait_bij_een_pull_request_en_heeft_alleen_leesrechten(self):
+        self.assertRegex(self.workflow, r"(?m)^on:\n  push:\n    branches: \[main\]\n  pull_request:")
+        self.assertRegex(self.workflow, r"(?m)^permissions:\n  contents: read$")
+
+    def test_de_workflow_draait_de_ha_tests_en_de_berichtentests(self):
+        self.assertIn("python -m pytest tests", self.workflow)
+        self.assertIn("python -m unittest discover -s tests -t .", self.workflow)
