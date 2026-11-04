@@ -138,11 +138,12 @@ async def test_een_volledige_ronde_tegen_de_echte_portal(hass, caplog, capsys):
         readings = await eventually(lambda: _live_has(portal, "solar_power_now", 0.0), "unavailable wordt 0 W")
         assert readings["battery_soc"]["value"] is None
 
-        # 6. Een sensor in kW: de portal toont de ruwe waarde (-0.4) met de eenheid van de meting (W); een omrekening naar W zit er niet in (zie het rapport).
+        # 6. Een sensor in kW: de portal rekent hem om naar W (portal-commit ae2bffc, src/lib/units.ts): -0.4 kW is -400 W. (Voor die commit toonde de portal de ruwe -0.4.)
         net = (await portal.readings())["power_now"]
         with capsys.disabled():
             print(f"\n[echte portal] power_now gekoppeld aan een sensor in kW met stand -0.4: portal toont value={net['value']} unit={net['unit']}")
-        assert net["value"] == -0.4
+        assert net["value"] == -400
+        assert net["unit"] == "W"
 
         # 7. De klant trekt de sleutel in: de volgende push krijgt een echte 401, een waarschuwing, geen crash.
         await portal.delete("/api/push-key")
