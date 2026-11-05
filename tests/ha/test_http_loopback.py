@@ -48,8 +48,10 @@ class LocalPortal:
         return web.json_response({"ok": True, "mapped": self.mapped, "legacy": False})
 
 
+# socket_enabled: de testbibliotheek van Home Assistant blokkeert op Linux (de CI) het aanmaken van elke socket behalve unix-sockets (HASocketBlockedError: A test tried to use socket.socket).
+# Deze tests praten over echte HTTP op 127.0.0.1 en maken zelf sockets aan (de lokale portal hieronder en free_port), dus vragen ze de fixture van pytest-socket uitdrukkelijk aan.
 @pytest.fixture
-async def portal(aiohttp_server):
+async def portal(aiohttp_server, socket_enabled):
     state = LocalPortal()
     app = web.Application()
     app.router.add_post("/api/ingest", state.handle)
@@ -127,7 +129,7 @@ async def test_statuscodes_geven_een_waarschuwing_geen_crash_en_herstel(hass, po
     assert PUSH_KEY not in caplog.text
 
 
-async def test_een_geweigerde_verbinding_is_geen_crash_en_herstelt_zodra_de_portal_terug_is(hass, caplog):
+async def test_een_geweigerde_verbinding_is_geen_crash_en_herstelt_zodra_de_portal_terug_is(hass, caplog, socket_enabled):
     energy_sensors(hass)
     caplog.set_level(logging.DEBUG, logger=LOGGER)
     port = free_port()  # er luistert niets op deze poort: de verbinding wordt geweigerd
