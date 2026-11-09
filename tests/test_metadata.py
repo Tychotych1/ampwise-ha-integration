@@ -131,3 +131,32 @@ class CiTests(unittest.TestCase):
     def test_de_workflow_draait_de_ha_tests_en_de_berichtentests(self):
         self.assertIn("python -m pytest tests", self.workflow)
         self.assertIn("python -m unittest discover -s tests -t .", self.workflow)
+
+
+class PublicatieTests(unittest.TestCase):
+    """Wat hassfest en HACS van de repository vragen. De controles zelf draaien alleen in GitHub (.github/workflows/validate.yml); deze tests houden de bestanden eronder bij elkaar."""
+
+    def test_manifest_heeft_de_sleutels_die_hacs_vraagt_en_staat_gesorteerd_zoals_hassfest_wil(self):
+        manifest = load(INTEGRATION / "manifest.json")
+        for key in ("domain", "documentation", "issue_tracker", "codeowners", "name", "version"):
+            self.assertIn(key, manifest, key)
+        self.assertTrue(manifest["documentation"].startswith("https://"))
+        self.assertTrue(manifest["issue_tracker"].startswith("https://"))
+        rest = sorted(k for k in manifest if k not in ("domain", "name"))
+        self.assertEqual(list(manifest), ["domain", "name", *rest], "hassfest: eerst domain en name, daarna alfabetisch")
+
+    def test_de_licentie_is_mit_en_het_merk_valt_er_in_de_readme_buiten(self):
+        self.assertTrue((REPO / "LICENSE").read_text(encoding="utf-8").startswith("MIT License"))
+        readme = (REPO / "README.md").read_text(encoding="utf-8")
+        self.assertIn('De naam en het merk "Ampwise" en het logo vallen er niet onder', readme)
+
+    def test_de_validatie_workflow_heeft_alleen_leesrechten_en_pint_elke_actie_op_een_commit(self):
+        workflow = (REPO / ".github" / "workflows" / "validate.yml").read_text(encoding="utf-8")
+        self.assertRegex(workflow, r"(?m)^permissions:\n  contents: read$")
+        actions = re.findall(r"(?m)^\s+- uses: (\S+)", workflow)
+        self.assertEqual(len(actions), 3, "checkout, hassfest en de HACS-controle")
+        for action in actions:
+            self.assertRegex(action, r"@[0-9a-f]{40}$", f"{action} staat niet vast op een commit")
+        self.assertIn("home-assistant/actions/hassfest@", workflow)
+        self.assertIn("hacs/action@", workflow)
+        self.assertIn("category: integration", workflow)
