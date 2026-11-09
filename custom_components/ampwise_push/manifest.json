@@ -1,11 +1,12 @@
 {
   "domain": "ampwise_push",
   "name": "Ampwise",
-  "version": "1.1.0",
-  "config_flow": true,
-  "iot_class": "cloud_push",
-  "integration_type": "service",
-  "requirements": [],
   "codeowners": ["@tychotych1"],
-  "documentation": "https://ampwise.nl"
+  "config_flow": true,
+  "documentation": "https://ampwise.nl",
+  "integration_type": "service",
+  "iot_class": "cloud_push",
+  "issue_tracker": "https://github.com/Tychotych1/ampwise-ha-integration/issues",
+  "requirements": [],
+  "version": "1.1.0"
 }

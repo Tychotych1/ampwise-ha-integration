@@ -1,0 +1,38 @@
+# De twee controles die Home Assistant en HACS zelf voor een eigen integratie aanbieden: hassfest (klopt de integratie met wat Home Assistant van een integratie vraagt) en de HACS-controle
+# (kan HACS en de Marketplace van Home Assistant 2026.11 deze repository lezen en installeren). Ze draaien alleen in GitHub; de tests staan in test.yml.
+# Gebruikte acties staan vast op een commit (en niet op een tak), zodat een wijziging bij een ander niet ongemerkt in onze controle terechtkomt. Wat daarbij NIET vastligt: hassfest draait de
+# nieuwste hassfest-image van Home Assistant en de HACS-actie draait de nieuwste HACS-controle (zijn image heet :main). Dat is bedoeld: de controle moet de huidige regels toetsen.
+# Zonder ignore: een rode HACS-controle betekent dat er echt iets ontbreekt (beschrijving of topics van de repository, de licentie op de standaardtak, het icoon).
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "23 5 * * 1" # elke maandag, 05:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hassfest:
+    name: hassfest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # actions/checkout v7.0.1 (20 juli 2026)
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      # home-assistant/actions, tak master op 9 november 2026 (er is alleen een tag uit 2020; de map hassfest/ is sinds augustus 2024 niet veranderd)
+      - uses: home-assistant/actions/hassfest@86d4564712fa02543c808e3a693dd04f9d3f8361
+
+  hacs:
+    name: HACS
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # hacs/action, tak main op 9 november 2026 (laatste commit 8 juni 2026; de nieuwste tag, 22.5.0, is van 2022)
+      - uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa
+        with:
+          category: integration
