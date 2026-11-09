@@ -81,4 +81,4 @@ Versies zonder versienummer (1.0.0 en eerder) worden door de portal nog 30 dagen
 
 ## Licentie en merk
 
-De code staat onder de MIT-licentie (zie `LICENSE`): je mag hem gebruiken, aanpassen en delen. De licentie geldt alleen voor de code. De naam en het merk "Ampwise" en het logo vallen er niet onder; die blijven van de eigenaar van Ampwise. Je mag ze niet gebruiken als naam van je eigen product of bedrijf. Een kopie of aanpassing van deze code krijgt dus een eigen naam en een eigen logo.
+De code staat onder de MIT-licentie (zie `LICENSE`): je mag hem gebruiken, aanpassen en delen. De licentie geldt alleen voor de code. De naam en het merk "Ampwise" en het logo vallen er niet onder; die blijven van de eigenaar van Ampwise. Je mag ze niet gebruiken als naam van je eigen product of bedrijf. Dat geldt ook voor de bestanden in `custom_components/ampwise_push/brand/` (het logo): die staan in deze repository zodat Home Assistant en HACS het icoon kunnen tonen, maar ze vallen niet onder de MIT-licentie. Een kopie of aanpassing van deze code krijgt dus een eigen naam en een eigen logo.
