@@ -1,3 +1,4 @@
 {
-  "name": "Ampwise"
+  "name": "Ampwise",
+  "homeassistant": "2025.1.0"
 }
