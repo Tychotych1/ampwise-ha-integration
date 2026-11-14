@@ -23,7 +23,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
-from custom_components.ampwise_push.const import CONF_API_KEY, CONF_INGEST_URL, CONF_PUSH_INTERVAL, DOMAIN
+from custom_components.ampwise_push.const import CONF_API_KEY, CONF_INGEST_URL, CONF_PUSH_INTERVAL, DOMAIN, INTEGRATION_VERSION
 
 from support import energy_sensors, make_entry, set_sensor
 
@@ -129,7 +129,7 @@ async def test_een_volledige_ronde_tegen_de_echte_portal(hass, caplog, capsys):
 
         # 4. De portal weet welke versie van de integratie er draait.
         info = (await portal.get("/api/push-key"))["info"]
-        assert info["integrationVersion"] == "1.1.0" and info["rejectedAt"] is None
+        assert info["integrationVersion"] == INTEGRATION_VERSION and info["rejectedAt"] is None
 
         # 5. unavailable: een vermogen dat uitvalt is 0 W, een batterijstand is geen waarde (null), nooit de laatste waarde.
         set_sensor(hass, "sensor.zon", "unavailable", unit_of_measurement="W", device_class="power", friendly_name="Zon")
@@ -138,7 +138,7 @@ async def test_een_volledige_ronde_tegen_de_echte_portal(hass, caplog, capsys):
         readings = await eventually(lambda: _live_has(portal, "solar_power_now", 0.0), "unavailable wordt 0 W")
         assert readings["battery_soc"]["value"] is None
 
-        # 6. Een sensor in kW: de portal rekent hem om naar W (portal-commit ae2bffc, src/lib/units.ts): -0.4 kW is -400 W. (Voor die commit toonde de portal de ruwe -0.4.)
+        # 6. Een sensor in kW: de portal rekent hem om naar W (een eerdere versie van de portal toonde de ruwe waarde): -0.4 kW is -400 W.
         net = (await portal.readings())["power_now"]
         with capsys.disabled():
             print(f"\n[echte portal] power_now gekoppeld aan een sensor in kW met stand -0.4: portal toont value={net['value']} unit={net['unit']}")

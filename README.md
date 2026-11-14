@@ -38,7 +38,8 @@ De integratie leest alleen de standen van sensoren in Home Assistant en stuurt e
 - Voor de keuzelijst in de portal, zonder stand: de entity-id, de naam, het type en de eenheid van elke sensor die over energie gaat.
 - Voor de metingen, alleen van de sensoren die je in de portal koppelt: dezelfde velden, plus de stand (de waarde, als tekst) en het moment waarop Home Assistant de waarde het laatst veranderde.
 - Bij elk bericht: het versienummer van de integratie.
-- Geen andere eigenschappen (attributen) van de sensor. De naam is de naam die je in Home Assistant aan de sensor gaf; staat daar een persoonlijk woord in, dan gaat dat mee.
+- Vanaf versie 1.2.0 stuurt de integratie ook de prijzen van je prijssensor mee: per kwartier de begintijd en de prijs. Dat gebeurt alleen als de portal daar voor jouw account om vraagt. Vraagt de portal er niet om, dan gaat er niets extra mee. De integratie leest dan de attributen `raw_today` en `raw_tomorrow` van die ene sensor (zoals de Nord Pool-integratie ze geeft: per kwartier een begintijd, een eindtijd en een prijs) of anders het attribuut `forecast` (de lijst van de Zonneplan-integratie) en stuurt per kwartier alleen de begintijd en de prijs mee, hooguit 288 regels (vandaag en morgen zijn er 192), met bovenaan de lijst de naam van die ene sensor, de eenheid en de naam van het gelezen attribuut. Dat gebeurt bij de eerste push daarna, bij een verandering van de lijst (hooguit eens per 6 minuten; de prijzen van morgen komen zodra de leverancier ze publiceert, meestal in de loop van de middag) en anders hooguit eens per 30 minuten, niet bij elke push. Heeft de sensor die attributen niet, dan gaat er niets extra mee. Een oudere portal die het veld niet kent, krijgt niets extra: de push is dan, op het versienummer na, gelijk aan die van versie 1.1.0. De portal controleert de lijst eerst (kwartieren, eenheid, bereik, en of de stand van de sensor bij de prijs van het lopende kwartier past) en negeert hem als dat niet klopt; de rest van de push gaat altijd gewoon door.
+- Geen andere eigenschappen (attributen) van de sensor, behalve de prijslijst hierboven. De naam is de naam die je in Home Assistant aan de sensor gaf; staat daar een persoonlijk woord in, dan gaat dat mee.
 
 ### Hoe vaak
 
@@ -56,7 +57,7 @@ De integratie leest alleen de standen van sensoren in Home Assistant en stuurt e
 ### Wat niet wordt verstuurd
 
 - Sensoren die niet over energie gaan, en alle andere soorten entiteiten.
-- Van een sensor niets anders dan de velden hierboven: geen attributen, geen apparaat of ruimte, geen geschiedenis.
+- Van een sensor niets anders dan de velden hierboven: geen attributen (behalve de prijslijst van de prijssensor, alleen als de portal daar om vraagt), geen apparaat of ruimte, geen geschiedenis.
 - Niets over jou of je huis zelf: geen locatie, geen gebruikers, geen netwerkinstellingen, geen logboek. De integratie leest alleen de standen van de sensoren.
 
 ### Storingen
