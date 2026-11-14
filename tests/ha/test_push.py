@@ -1,6 +1,6 @@
 """De integratie zoals een echte Home Assistant hem laadt: setup, de eerste push met de ontdekkingslijst, het antwoord met de gekoppelde lijst, daarna alleen de gekoppelde sensoren,
 en wat er gebeurt bij een onleesbaar antwoord, een 401, een 426 en een portal die niet bereikbaar is. De portal is hier een testportal (support.FakePortal); de berichten zijn dezelfde als
-die van de echte integratie, de antwoorden volgen het contract van src/lib/ingestProtocol.ts en tests/pushContract.spec.ts in de portal."""
+die van de echte integratie, de antwoorden volgen het contract van de portal (het antwoord op een push)."""
 from __future__ import annotations
 
 import json
@@ -193,7 +193,7 @@ async def test_een_nieuwe_stand_gaat_mee_en_de_last_updated_verandert_met_de_sta
 
 @pytest.mark.parametrize("value", ["unavailable", "unknown"])
 async def test_unavailable_en_unknown_gaan_als_tekst_door_de_portal_maakt_er_geen_waarde_van(hass, aioclient_mock, freezer, value):
-    """De portal verwacht de tekst zoals Home Assistant hem geeft (tests/pushContract.spec.ts, 0.4): de integratie laat de sensor niet weg en maakt er geen 0 of null van."""
+    """De portal verwacht de tekst zoals Home Assistant hem geeft (zoals de portal het verwacht): de integratie laat de sensor niet weg en maakt er geen 0 of null van."""
     set_sensor(hass, "sensor.zon", value, unit_of_measurement="W", device_class="power")
     set_sensor(hass, "sensor.ok", "5", unit_of_measurement="W", device_class="power")
     await setup_entry(hass, aioclient_mock, mapped=["sensor.zon", "sensor.ok"])

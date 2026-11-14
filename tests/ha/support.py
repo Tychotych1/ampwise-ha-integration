@@ -25,15 +25,21 @@ PUSH_KEY = "amp_testsleutel_voor_de_tests_0123456789"
 INTERVAL = 30
 
 
+NO_PRICE_ENTITY_FIELD = object()
+
+
 class FakePortal:
     """Een testportal achter aioclient_mock: de standen (mode) en de lijst van gekoppelde sensoren zijn tijdens een test te veranderen.
 
     mode: "ok" (JSON met mapped), "legacy" (JSON zonder mapped: een oudere portal), "html" (200 met een foutpagina, geen JSON), "401", "426", "500", "refused" (verbinding geweigerd),
-    "timeout"."""
+    "timeout".
 
-    def __init__(self, aioclient_mock: Any, mapped: list[str] | None = None) -> None:
+    price_entity: wat het antwoord als priceEntity noemt (de prijssensor, of None voor null); NO_PRICE_ENTITY_FIELD (standaard) laat het veld weg, zoals een portal van voor de prijslijst."""
+
+    def __init__(self, aioclient_mock: Any, mapped: list[str] | None = None, price_entity: Any = NO_PRICE_ENTITY_FIELD) -> None:
         self.mode = "ok"
         self.mapped: list[str] = list(mapped or [])
+        self.price_entity = price_entity
         aioclient_mock.post(PORTAL_URL, side_effect=self._handle)
 
     async def _handle(self, method: str, url: URL, data: Any) -> AiohttpClientMockResponse:
@@ -48,7 +54,10 @@ class FakePortal:
             return AiohttpClientMockResponse(method, url, status=int(mode), json={"error": mode})
         if mode == "legacy":
             return AiohttpClientMockResponse(method, url, status=200, json={"ok": True, "received": 3, "catalog": 0, "legacy": False})
-        return AiohttpClientMockResponse(method, url, status=200, json={"ok": True, "received": 0, "catalog": 0, "mapped": list(self.mapped), "legacy": False})
+        reply: dict[str, Any] = {"ok": True, "received": 0, "catalog": 0, "mapped": list(self.mapped), "legacy": False}
+        if self.price_entity is not NO_PRICE_ENTITY_FIELD:
+            reply["priceEntity"] = self.price_entity
+        return AiohttpClientMockResponse(method, url, status=200, json=reply)
 
 
 def make_entry(hass: HomeAssistant, key: str = PUSH_KEY, url: str = PORTAL_URL, interval: int = INTERVAL) -> MockConfigEntry:
@@ -98,6 +107,7 @@ __all__ = [
     "FakePortal",
     "INTEGRATION_VERSION",
     "INTERVAL",
+    "NO_PRICE_ENTITY_FIELD",
     "PORTAL_URL",
     "PUSH_KEY",
     "advance",
